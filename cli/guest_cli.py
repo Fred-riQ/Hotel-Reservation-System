@@ -1,8 +1,65 @@
-import sqlite3
-from database.db_connection import get_db_connection, execute_query, fetch_query
-from utils.email_notifications import send_booking_email, send_welcome_email
+import re
 from datetime import datetime
-from colorama import Fore, Style
+from database.db_connection import fetch_query, execute_query, get_db_connection
+from colorama import Fore, Style, init
+import requests
+from requests.auth import HTTPBasicAuth
+import base64
+import os
+import sqlite3
+from utils.email_notifications import send_welcome_email, send_booking_email
+
+# Initialize colorama for Windows compatibility
+init()
+
+# Replace with your credentials from Safaricom Developer Portal
+CONSUMER_KEY = "WMCSmuK7QTDVJmcE5afjdcpuGrnOqgC0MgjA9QGwUBcjciKF"
+CONSUMER_SECRET = "OQdsS2rbTIK1ExAEoLXVc4MosHaeRft6O6IfLp0DWqfGqpOhp6D9JY891hW78EWq"
+BUSINESS_SHORTCODE = "174379"  # Use your PayBill/Till number
+PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+CALLBACK_URL = "https://8c76-102-0-15-200.ngrok-free.app/daraja/callback"
+
+def get_access_token():
+    """Fetch the access token from Safaricom API."""
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    response = requests.get(url, auth=HTTPBasicAuth(CONSUMER_KEY, CONSUMER_SECRET))
+    access_token = response.json().get("access_token")
+    return access_token
+
+def generate_password():
+    """Generate the password for STK push."""
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    password = base64.b64encode(f"{BUSINESS_SHORTCODE}{PASSKEY}{timestamp}".encode()).decode()
+    return password, timestamp
+
+def stk_push(phone_number, amount):
+    """Initiate STK push payment."""
+    access_token = get_access_token()
+    url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+
+    password, timestamp = generate_password()
+
+    payload = {
+        "BusinessShortCode": BUSINESS_SHORTCODE,
+        "Password": password,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount,
+        "PartyA": phone_number,
+        "PartyB": BUSINESS_SHORTCODE,
+        "PhoneNumber": phone_number,
+        "CallBackURL": CALLBACK_URL,
+        "AccountReference": "Order123",
+        "TransactionDesc": "Payment for Order123"
+    }
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    return response.json()
 
 def is_valid_date(date_str):
     """Check if the input is a valid future date format (YYYY-MM-DD)."""
@@ -119,13 +176,17 @@ def book_room(conn, user_id):
             try:
                 room_id = int(input("Enter Room ID to book: ").strip())
 
-                room_check = fetch_query(conn, "SELECT room_number, room_type FROM rooms WHERE room_id = ? AND is_available = 1;", (room_id,))
+                room_check = fetch_query(conn, "SELECT room_number, room_type, price FROM rooms WHERE room_id = ? AND is_available = 1;", (room_id,))
                 if not room_check:
                     print("\033[1;31m❌ Invalid Room ID or Room is not available.\033[0m")
                     return
 
                 room_info = f"Room {room_check[0]['room_number']} ({room_check[0]['room_type']})"
 
+                # Prompt for phone number
+                phone_number = input(Fore.YELLOW + "Enter your phone number (e.g., 254703647000): " + Style.RESET_ALL).strip()
+
+                # Insert reservation into the database
                 query = """
                     INSERT INTO reservations (user_id, room_id, check_in_date, check_out_date, status)
                     VALUES (?, ?, ?, ?, 'confirmed');
@@ -141,6 +202,14 @@ def book_room(conn, user_id):
                         user_email, username = user[0]["email"], user[0]["username"]
                         send_booking_email(user_email, username, room_info, check_in_date.strftime('%Y-%m-%d'), check_out_date.strftime('%Y-%m-%d'))
                         print("\033[1;32m✅ Booking successful! Check your email for confirmation.\033[0m")
+
+                        # Initiate STK Push payment
+                        amount = room_check[0]["price"]  # Get the room price
+                        response = stk_push(phone_number, amount)
+                        if response.get('ResponseCode') == '0':
+                            print(Fore.GREEN + "✅ Payment initiated successfully. Please complete the payment on your phone." + Style.RESET_ALL)
+                        else:
+                            print(Fore.RED + "❌ Failed to initiate payment. Please try again." + Style.RESET_ALL)
                     else:
                         print("\033[1;31m❌ User not found. Unable to send email confirmation.\033[0m")
                 else:

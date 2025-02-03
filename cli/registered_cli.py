@@ -6,7 +6,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import base64
 import os
-import sqlite3
+import sqlite3 
 
 # Initialize colorama for Windows compatibility
 init()
