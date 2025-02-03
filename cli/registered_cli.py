@@ -1,10 +1,12 @@
 import re
 from datetime import datetime
-from database.db_connection import fetch_query, execute_query
+from database.db_connection import fetch_query, execute_query, get_db_connection
 from colorama import Fore, Style, init
 import requests
 from requests.auth import HTTPBasicAuth
 import base64
+import os
+import sqlite3
 
 # Initialize colorama for Windows compatibility
 init()
@@ -14,7 +16,7 @@ CONSUMER_KEY = "WMCSmuK7QTDVJmcE5afjdcpuGrnOqgC0MgjA9QGwUBcjciKF"
 CONSUMER_SECRET = "OQdsS2rbTIK1ExAEoLXVc4MosHaeRft6O6IfLp0DWqfGqpOhp6D9JY891hW78EWq"
 BUSINESS_SHORTCODE = "174379"  # Use your PayBill/Till number
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-CALLBACK_URL = "https://54a1-102-0-15-200.ngrok-free.app/daraja/callback"
+CALLBACK_URL = "https://8c76-102-0-15-200.ngrok-free.app/daraja/callback"
 
 def get_access_token():
     url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
@@ -248,6 +250,5 @@ def registered_user_menu(conn):
             print(Fore.RED + "❌ Invalid choice. Please enter a number between 1 and 5." + Style.RESET_ALL)
 
 if __name__ == "__main__":
-    from database.db_connection import get_db_connection
-    conn = get_db_connection()
+    conn = get_db_connection()  # Get connection to hotel_management.db
     registered_user_menu(conn)

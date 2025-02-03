@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # Set correct database path dynamically
-DATABASE_NAME = os.path.join(os.path.dirname(__file__), "hotel_connection.db")
+DATABASE_NAME = os.path.join(os.path.dirname(__file__), "hotel_management.db")
 
 def get_db_connection():
     """Establish and return a connection to the SQLite database."""
