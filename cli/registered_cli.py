@@ -16,7 +16,7 @@ CONSUMER_KEY = "WMCSmuK7QTDVJmcE5afjdcpuGrnOqgC0MgjA9QGwUBcjciKF"
 CONSUMER_SECRET = "OQdsS2rbTIK1ExAEoLXVc4MosHaeRft6O6IfLp0DWqfGqpOhp6D9JY891hW78EWq"
 BUSINESS_SHORTCODE = "174379"  # Use your PayBill/Till number
 PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-CALLBACK_URL = "https://8c76-102-0-15-200.ngrok-free.app/daraja/callback"
+CALLBACK_URL = "https://dd5f-102-0-15-200.ngrok-free.app/daraja/callback"
 
 def get_access_token():
     url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
